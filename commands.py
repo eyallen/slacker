@@ -6,6 +6,8 @@ HELP_COMMAND        = "/help"
 QUIT_COMMAND        = "/quit"
 STATUS_COMMAND      = "/status"
 
+CHANNELS = channels.Channels()
+
 def do_command_loop():
     shouldexit = False
     while not shouldexit:
@@ -23,7 +25,7 @@ def handle_command(command):
     }.get(commands[0], print_help)(command)
 
 def handle_channels(command):
-    channels.handle_command(command)
+    CHANNELS.handle_command(command)
     return
 
 def print_help(command):

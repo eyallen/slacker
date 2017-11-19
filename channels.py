@@ -7,69 +7,80 @@ INFO_COMMAND = "info"
 JOIN_COMMAND = "join"
 LIST_COMMAND = "list"
 
-# TODO: This really needs to be in a class
-CHANNEL_LIST = {}
+class Channels:
+    _channel_list = {}
+    _command_list = {}
 
-def handle_command(command):
-    commands = command.split()
+    _slack_token = ""
+    _slack_client = None
 
-    if len(commands) == 1:
-        print_help(command)
+    def __init__(self):
+        self._slack_token = os.environ["SLACK_API_TOKEN"]
+        self._slack_client = SlackClient(self._slack_token)
+        self._command_list = {
+            HELP_COMMAND: self.print_help,
+            INFO_COMMAND: self.get_channel_info,
+            JOIN_COMMAND: self.join_channel,
+            LIST_COMMAND: self.list_channels,
+        }
+
+        #TODO: init _channel_list here
+
+    def handle_command(self, command):
+        commands = command.split()
+
+        if len(commands) == 1:
+            self.print_help(command)
+            return
+
+        self._command_list.get(commands[1], self.print_help)(command)
+
         return
 
-    {
-        HELP_COMMAND: print_help,
-        INFO_COMMAND: get_channel_info,
-        JOIN_COMMAND: join_channel,
-        LIST_COMMAND: list_channels,
-    }.get(commands[1], print_help)(command)
+    #TODO: makes sense to have an option to just pass name/channel object
+    def get_channel_info(self, command):
+        channelname = self.normalize_channel_name(command.split()[2])
+        channelid = self._channel_list[channelname]        
 
-    return
+        info = self._slack_client.api_call("channels.info", channel=channelid)
+        info = json.dumps(info)
+        info = json.loads(str(info))
 
-def get_channel_info(command):
-    channelname = command.split()[2]
+        return info
 
-    #TODO: normalize for #name or name
-    channelid = CHANNEL_LIST[channelname]
+    def print_channel_header(self, channelinfo):
+        print("#" + channelinfo["channel"]["name"])
+        print("{members} | {topic}".format(
+            members=len(channelinfo["channel"]["members"]),
+            topic=channelinfo["channel"]["topic"]["value"]))
 
-    #TODO: move me to a class object
-    slack_token = os.environ["SLACK_API_TOKEN"]
-    sc = SlackClient(slack_token)
+    def join_channel(self, command):
+        #Doesn't seem like slack cares about #channel or channel, but it would be good
+        #to confirm that
+        channelname = command.split()[2]
 
-    info = sc.api_call("channels.info", channel=channelid)
-    #info = json.dumps(info)
-    #info = json.loads(str(info))
+        self._slack_client.api_call("channels.join", channel=channelname)
 
-    print(info)
+        channelinfo = self.get_channel_info(command)
+        self.print_channel_header(channelinfo)
 
-    return
+        return
 
-def join_channel(command):
-    channelname = command.split()[2]
-    #TODO: move me to a class object
-    slack_token = os.environ["SLACK_API_TOKEN"]
-    sc = SlackClient(slack_token)
+    def list_channels(self, command):
+        # get list of channels
+        channels = self._slack_client.api_call("channels.list")
+        channels = json.dumps(channels)
+        channels = json.loads(str(channels))
 
-    sc.api_call("channels.join", channel=channelname)
+        print("Channels")
+        for channel in channels["channels"]:
+            # TODO: do this at init, not here
+            channelname = self.normalize_channel_name(channel["name"])
+            self._channel_list[channelname] = channel["id"]
+            print("# " + channel["name"])
 
-    return
+    def print_help(self, command):
+        print("channels help")
 
-def list_channels(command):
-
-    #TODO: move me to a class object
-    slack_token = os.environ["SLACK_API_TOKEN"]
-    sc = SlackClient(slack_token)
-
-    # get list of channels
-    channels = sc.api_call("channels.list")
-    channels = json.dumps(channels)
-    channels = json.loads(str(channels))
-
-    print("Channels")
-    for channel in channels["channels"]:
-        # TODO: do this at init, not here
-        CHANNEL_LIST[channel["name"]] = channel["id"]
-        print("# " + channel["name"])
-
-def print_help(command):
-    print("channels help")
+    def normalize_channel_name(self, channelname):
+        return channelname.strip("#")
