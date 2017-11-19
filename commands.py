@@ -1,4 +1,5 @@
 import channels
+import sys
 
 CHANNELS_COMMAND    = "/channels"
 HELP_COMMAND        = "/help"
@@ -22,15 +23,16 @@ def handle_command(command):
     }.get(commands[0], print_help)(command)
 
 def handle_channels(command):
-    return channels.handle_command(command)
+    channels.handle_command(command)
+    return
 
 def print_help(command):
     print ("need some help?")
-    return False
+    return
 
 def do_quit(command):
-    return True
+    sys.exit()
 
 def print_status(command):
     print ("Current Channel: none")
-    return False
+    return

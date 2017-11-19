@@ -5,7 +5,7 @@ from slackclient import SlackClient
 # slacker modules
 import channels
 import commands
-import helpers
+import utilities
 
-helpers.clear_screen()
+utilities.clear_screen()
 commands.do_command_loop()
